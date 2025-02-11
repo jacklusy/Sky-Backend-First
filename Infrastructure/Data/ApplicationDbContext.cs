@@ -1,6 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
-using System.Reflection.Emit;
 
 public class ApplicationDbContext : DbContext
 {
@@ -20,7 +18,13 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+        // Apply all configurations
+        modelBuilder.ApplyConfiguration(new DepartmentConfiguration());
+        modelBuilder.ApplyConfiguration(new PositionConfiguration());
+        modelBuilder.ApplyConfiguration(new EmployeeConfiguration());
+        modelBuilder.ApplyConfiguration(new VacationTypeConfiguration());
+        modelBuilder.ApplyConfiguration(new RequestStateConfiguration());
+        modelBuilder.ApplyConfiguration(new VacationRequestConfiguration());
 
         // Seed initial data
         SeedInitialData(modelBuilder);
