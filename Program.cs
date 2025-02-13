@@ -15,8 +15,23 @@ using EmployeeManagement.Application.Services;
 using EmployeeManagement.Application.Validators;
 using Swashbuckle.AspNetCore.Swagger;
 using EmployeeManagement.Application.Mappings;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Explicitly load configuration
+builder.Configuration
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+    .AddEnvironmentVariables();
+
+// After loading configuration
+var allConnectionStrings = builder.Configuration.GetSection("ConnectionStrings").GetChildren();
+foreach (var connection in allConnectionStrings)
+{
+    Console.WriteLine($"Found connection string: {connection.Key} = {connection.Value}");
+}
 
 // Add services to the container
 builder.Services.AddControllers();
@@ -32,12 +47,16 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add DbContext
+// Add DbContext configuration
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Database connection string 'DefaultConnection' not found.");
+}
+
+// Register ApplicationDbContext
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        b => b.MigrationsAssembly("EmployeeManagement.Infrastructure")
-    ));
+    options.UseSqlServer(connectionString));
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(Program).Assembly, typeof(MappingProfile).Assembly);
@@ -58,6 +77,21 @@ builder.Services.AddScoped<IValidator<DepartmentDto>, DepartmentValidator>();
 builder.Services.AddScoped<IValidator<VacationRequestDto>, VacationRequestValidator>();
 
 var app = builder.Build();
+
+// Initialize Database
+try
+{
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await context.Database.MigrateAsync();
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"An error occurred while initializing the database: {ex.Message}");
+    throw;
+}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
