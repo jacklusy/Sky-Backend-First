@@ -22,7 +22,7 @@ public class Employee
     [MaxLength(6)]
     public string ReportedToEmployeeNumber { get; set; }
 
-    [Range(0, 24)]
+    [Range(0, 24, ErrorMessage = "Vacation days must be between 0 and 24")]
     public int VacationDaysLeft { get; set; }
 
     [Column(TypeName = "decimal(18,2)")]

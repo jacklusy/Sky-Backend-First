@@ -40,5 +40,11 @@ public class VacationRequestConfiguration : IEntityTypeConfiguration<VacationReq
             .HasForeignKey(v => v.DeclinedByEmployeeNumber)
             .IsRequired(false)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Add indexes for commonly queried fields
+        builder.HasIndex(v => v.StartDate);
+        builder.HasIndex(v => v.EndDate);
+        builder.HasIndex(v => v.RequestStateId);
+        builder.HasIndex(v => new { v.EmployeeNumber, v.RequestStateId });
     }
 }
