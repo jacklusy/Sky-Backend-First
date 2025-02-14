@@ -28,7 +28,10 @@ public class Employee
     [Column(TypeName = "decimal(18,2)")]
     public decimal Salary { get; set; }
 
+    [ForeignKey("DepartmentId")]
     public virtual Department Department { get; set; }
+
+    [ForeignKey("PositionId")]
     public virtual Position Position { get; set; }
     public virtual Employee ReportedToEmployee { get; set; }
     public virtual ICollection<Employee> Subordinates { get; set; }

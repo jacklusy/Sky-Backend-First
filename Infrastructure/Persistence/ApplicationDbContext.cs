@@ -4,14 +4,22 @@ using EmployeeManagement.Infrastructure.Persistence.Configurations;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EmployeeManagement.Infrastructure.Persistence
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        private readonly ILogger<ApplicationDbContext> _logger;
+
+        public ApplicationDbContext(
+            DbContextOptions<ApplicationDbContext> options, 
+            ILogger<ApplicationDbContext>? logger = null)
             : base(options)
         {
+            this.ChangeTracker.LazyLoadingEnabled = true;
+            _logger = logger ?? NullLogger<ApplicationDbContext>.Instance;
         }
 
         public DbSet<Department> Departments { get; set; }
@@ -35,23 +43,19 @@ namespace EmployeeManagement.Infrastructure.Persistence
             if (await Departments.AnyAsync())
                 return;
 
-            var departments = new List<Department>();
-            var departmentNames = new[]
+            var departments = new List<Department>
             {
-                "Sales", "Marketing", "Engineering", "Research & Development",
-                "Human Resources", "Finance", "Operations", "Customer Service",
-                "Legal", "IT Support", "Quality Assurance", "Product Management",
-                "Business Development", "Public Relations", "Administration",
-                "Supply Chain", "Training", "Security", "Facilities", "Strategy"
+                new Department { DepartmentName = "Engineering" },
+                new Department { DepartmentName = "Sales" },
+                new Department { DepartmentName = "Marketing" },
+                new Department { DepartmentName = "Human Resources" },
+                new Department { DepartmentName = "Finance" },
+                new Department { DepartmentName = "Operations" },
+                new Department { DepartmentName = "IT Support" },
+                new Department { DepartmentName = "Product Management" },
+                new Department { DepartmentName = "Quality Assurance" },
+                new Department { DepartmentName = "Research & Development" }
             };
-
-            for (int i = 0; i < departmentNames.Length; i++)
-            {
-                departments.Add(new Department
-                {
-                    DepartmentName = departmentNames[i]
-                });
-            }
 
             await Departments.AddRangeAsync(departments);
             await SaveChangesAsync();
@@ -65,26 +69,16 @@ namespace EmployeeManagement.Infrastructure.Persistence
 
             var positions = new List<Position>
             {
-                new Position { PositionName = "Software Engineer" },
+                new Position { PositionName = "Technical Lead" },
                 new Position { PositionName = "Senior Developer" },
+                new Position { PositionName = "Software Engineer" },
                 new Position { PositionName = "Project Manager" },
                 new Position { PositionName = "Business Analyst" },
-                new Position { PositionName = "Quality Assurance Engineer" },
+                new Position { PositionName = "QA Engineer" },
                 new Position { PositionName = "DevOps Engineer" },
-                new Position { PositionName = "System Administrator" },
-                new Position { PositionName = "Database Administrator" },
                 new Position { PositionName = "UI/UX Designer" },
                 new Position { PositionName = "Product Owner" },
-                new Position { PositionName = "Scrum Master" },
-                new Position { PositionName = "Technical Lead" },
-                new Position { PositionName = "Solution Architect" },
-                new Position { PositionName = "Data Scientist" },
-                new Position { PositionName = "Frontend Developer" },
-                new Position { PositionName = "Backend Developer" },
-                new Position { PositionName = "Full Stack Developer" },
-                new Position { PositionName = "Mobile Developer" },
-                new Position { PositionName = "Cloud Engineer" },
-                new Position { PositionName = "Security Engineer" }
+                new Position { PositionName = "Scrum Master" }
             };
 
             await Positions.AddRangeAsync(positions);
@@ -97,26 +91,13 @@ namespace EmployeeManagement.Infrastructure.Persistence
             if (await Employees.AnyAsync())
                 return;
 
-            // Get the actual department IDs from the database
-            var departmentIds = await Departments.Select(d => d.DepartmentId).ToListAsync();
-            if (!departmentIds.Any())
-            {
-                // If no departments exist, seed them first
-                await SeedDepartmentsAsync();
-                departmentIds = await Departments.Select(d => d.DepartmentId).ToListAsync();
-            }
+            // Get all departments and positions
+            var departments = await Departments.ToListAsync();
+            var positions = await Positions.ToListAsync();
 
-            // Get position IDs
-            var positionIds = await Positions.Select(p => p.PositionId).ToListAsync();
-            if (!positionIds.Any())
-            {
-                await SeedPositionsAsync();
-                positionIds = await Positions.Select(p => p.PositionId).ToListAsync();
-            }
-
-            // Safely get department and position IDs
-            var departmentId = departmentIds.FirstOrDefault();
-            var positionId = positionIds.FirstOrDefault();
+            // Debug logging
+            _logger?.LogInformation("Available Departments: " + string.Join(", ", departments.Select(d => d.DepartmentName)));
+            _logger?.LogInformation("Available Positions: " + string.Join(", ", positions.Select(p => p.PositionName)));
 
             var employees = new List<Employee>
             {
@@ -124,8 +105,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP001",
                     EmployeeName = "John Smith",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Engineering").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "Technical Lead").PositionId,
                     GenderCode = "M",
                     VacationDaysLeft = 24,
                     Salary = 5000.00m
@@ -134,8 +115,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP002",
                     EmployeeName = "Jane Doe",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Engineering").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "Senior Developer").PositionId,
                     GenderCode = "F",
                     ReportedToEmployeeNumber = "EMP001",
                     VacationDaysLeft = 24,
@@ -145,8 +126,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP003",
                     EmployeeName = "Mike Johnson",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Engineering").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "Project Manager").PositionId,
                     GenderCode = "M",
                     ReportedToEmployeeNumber = "EMP001",
                     VacationDaysLeft = 24,
@@ -156,8 +137,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP004",
                     EmployeeName = "Sarah Wilson",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Research & Development").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "Business Analyst").PositionId,
                     GenderCode = "F",
                     ReportedToEmployeeNumber = "EMP001",
                     VacationDaysLeft = 24,
@@ -167,8 +148,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP005",
                     EmployeeName = "David Brown",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Research & Development").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "QA Engineer").PositionId,
                     GenderCode = "M",
                     ReportedToEmployeeNumber = "EMP004",
                     VacationDaysLeft = 24,
@@ -178,8 +159,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP006",
                     EmployeeName = "Emily Davis",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Research & Development").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "DevOps Engineer").PositionId,
                     GenderCode = "F",
                     ReportedToEmployeeNumber = "EMP004",
                     VacationDaysLeft = 24,
@@ -189,8 +170,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP007",
                     EmployeeName = "James Wilson",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Research & Development").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "Software Engineer").PositionId,
                     GenderCode = "M",
                     ReportedToEmployeeNumber = "EMP004",
                     VacationDaysLeft = 24,
@@ -200,8 +181,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP008",
                     EmployeeName = "Lisa Anderson",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Research & Development").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "Senior Developer").PositionId,
                     GenderCode = "F",
                     ReportedToEmployeeNumber = "EMP004",
                     VacationDaysLeft = 24,
@@ -211,8 +192,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP009",
                     EmployeeName = "Robert Taylor",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Research & Development").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "UI/UX Designer").PositionId,
                     GenderCode = "M",
                     ReportedToEmployeeNumber = "EMP001",
                     VacationDaysLeft = 24,
@@ -222,8 +203,8 @@ namespace EmployeeManagement.Infrastructure.Persistence
                 {
                     EmployeeNumber = "EMP010",
                     EmployeeName = "Emma Martinez",
-                    DepartmentId = departmentId,
-                    PositionId = positionId,
+                    DepartmentId = departments.First(d => d.DepartmentName == "Research & Development").DepartmentId,
+                    PositionId = positions.First(p => p.PositionName == "Product Owner").PositionId,
                     GenderCode = "F",
                     ReportedToEmployeeNumber = "EMP001",
                     VacationDaysLeft = 24,

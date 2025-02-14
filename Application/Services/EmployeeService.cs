@@ -9,6 +9,9 @@ using EmployeeManagement.Domain.Interfaces.Repositories;
 using EmployeeManagement.Application.DTOs;
 using EmployeeManagement.Infrastructure.Repositories;
 using ValidationException = EmployeeManagement.Domain.Exceptions.ValidationException;
+using Microsoft.Extensions.Logging;
+using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace EmployeeManagement.Application.Services
 {
@@ -19,19 +22,22 @@ namespace EmployeeManagement.Application.Services
         private readonly IValidator<EmployeeDto> _validator;
         private readonly IDepartmentRepository _departmentRepository;
         private readonly IPositionRepository _positionRepository;
+        private readonly ILogger<EmployeeService> _logger;
 
         public EmployeeService(
             IEmployeeRepository employeeRepository,
             IMapper mapper,
             IValidator<EmployeeDto> validator,
             IDepartmentRepository departmentRepository,
-            IPositionRepository positionRepository)
+            IPositionRepository positionRepository,
+            ILogger<EmployeeService> logger)
         {
             _employeeRepository = employeeRepository;
             _mapper = mapper;
             _validator = validator;
             _departmentRepository = departmentRepository;
             _positionRepository = positionRepository;
+            _logger = logger;
         }
 
         public async Task<EmployeeDto> GetEmployeeDetailsAsync(string employeeNumber)
@@ -46,30 +52,110 @@ namespace EmployeeManagement.Application.Services
         public async Task<IEnumerable<EmployeeDto>> GetAllEmployeesAsync()
         {
             var employees = await _employeeRepository.GetAllAsync();
-            return _mapper.Map<IEnumerable<EmployeeDto>>(employees);
+            
+            // Debug logging
+            foreach (var employee in employees)
+            {
+                _logger.LogInformation($"Employee: {employee.EmployeeNumber}, " +
+                    $"Department: {employee.Department?.DepartmentName ?? "null"}, " +
+                    $"Position: {employee.Position?.PositionName ?? "null"}");
+            }
+            
+            var employeeDtos = _mapper.Map<IEnumerable<EmployeeDto>>(employees);
+            
+            // Debug logging for DTOs
+            foreach (var dto in employeeDtos)
+            {
+                _logger.LogInformation($"DTO - Employee: {dto.EmployeeNumber}, " +
+                    $"Department: {dto.DepartmentName ?? "null"}, " +
+                    $"Position: {dto.PositionName ?? "null"}");
+            }
+            
+            return employeeDtos;
         }
 
         public async Task<EmployeeDto> CreateEmployeeAsync(EmployeeDto employeeDto)
         {
-            var validationResult = await _validator.ValidateAsync(employeeDto);
-            if (!validationResult.IsValid)
-                throw new ValidationException(validationResult.Errors);
+            try
+            {
+                // Validate the DTO
+                var validationResult = await _validator.ValidateAsync(employeeDto);
+                if (!validationResult.IsValid)
+                {
+                    _logger.LogWarning("Validation failed for employee: {EmployeeNumber}. Errors: {Errors}", 
+                        employeeDto.EmployeeNumber,
+                        string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)));
+                        
+                    throw new ValidationException(validationResult.Errors);
+                }
 
-            // Get Department and Position IDs
-            var department = await _departmentRepository.GetByNameAsync(employeeDto.DepartmentName);
-            var position = await _positionRepository.GetByNameAsync(employeeDto.PositionName);
+                // Check if employee number already exists
+                var existingEmployee = await _employeeRepository.GetByIdAsync(employeeDto.EmployeeNumber);
+                if (existingEmployee != null)
+                    throw new BusinessException($"Employee with number {employeeDto.EmployeeNumber} already exists.");
 
-            if (department == null)
-                throw new NotFoundException($"Department '{employeeDto.DepartmentName}' not found.");
-            if (position == null)
-                throw new NotFoundException($"Position '{employeeDto.PositionName}' not found.");
+                // Get Department and Position
+                var department = await _departmentRepository.GetByNameAsync(employeeDto.DepartmentName);
+                var position = await _positionRepository.GetByNameAsync(employeeDto.PositionName);
 
-            var employee = _mapper.Map<Employee>(employeeDto);
-            employee.DepartmentId = department.DepartmentId;
-            employee.PositionId = position.PositionId;
+                // Log available departments and positions for debugging
+                _logger.LogInformation("Available Departments: {Departments}", 
+                    string.Join(", ", (await _departmentRepository.GetAllAsync()).Select(d => d.DepartmentName)));
+                _logger.LogInformation("Available Positions: {Positions}", 
+                    string.Join(", ", (await _positionRepository.GetAllAsync()).Select(p => p.PositionName)));
 
-            await _employeeRepository.AddAsync(employee);
-            return _mapper.Map<EmployeeDto>(employee);
+                if (department == null)
+                    throw new NotFoundException($"Department '{employeeDto.DepartmentName}' not found.");
+                if (position == null)
+                    throw new NotFoundException($"Position '{employeeDto.PositionName}' not found.");
+
+                // Map DTO to entity
+                var employee = _mapper.Map<Employee>(employeeDto);
+                
+                // Ensure gender code is single character
+                employee.GenderCode = employee.GenderCode?.Substring(0, 1);
+
+                // Set Department and Position IDs
+                employee.DepartmentId = department.DepartmentId;
+                employee.PositionId = position.PositionId;
+
+                // Handle ReportedToEmployee if provided
+                if (!string.IsNullOrEmpty(employeeDto.ReportedToEmployeeName))
+                {
+                    var employees = await _employeeRepository.GetAllAsync();
+                    var reportedToEmployee = employees.FirstOrDefault(e => e.EmployeeName == employeeDto.ReportedToEmployeeName);
+                    
+                    if (reportedToEmployee == null)
+                        throw new NotFoundException($"Reported-to employee '{employeeDto.ReportedToEmployeeName}' not found.");
+                        
+                    employee.ReportedToEmployeeNumber = reportedToEmployee.EmployeeNumber;
+                }
+
+                // Set default values if not provided
+                if (employee.VacationDaysLeft == 0)
+                    employee.VacationDaysLeft = 24;
+
+                _logger.LogInformation(
+                    "Creating employee: Number={EmployeeNumber}, Name={Name}, Department={Department}({DepartmentId}), Position={Position}({PositionId}), Gender={Gender}",
+                    employee.EmployeeNumber,
+                    employee.EmployeeName,
+                    employeeDto.DepartmentName,
+                    employee.DepartmentId,
+                    employeeDto.PositionName,
+                    employee.PositionId,
+                    employee.GenderCode
+                );
+
+                await _employeeRepository.AddAsync(employee);
+                return _mapper.Map<EmployeeDto>(employee);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating employee: {EmployeeNumber}. Error: {Error}", 
+                    employeeDto.EmployeeNumber, 
+                    ex.InnerException?.Message ?? ex.Message);
+                throw;
+            }
         }
 
         public async Task UpdateEmployeeAsync(string employeeNumber, EmployeeDto employeeDto)

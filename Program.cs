@@ -16,6 +16,7 @@ using EmployeeManagement.Application.Validators;
 using Swashbuckle.AspNetCore.Swagger;
 using EmployeeManagement.Application.Mappings;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,11 @@ foreach (var connection in allConnectionStrings)
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// Add Logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
 // Add Swagger services
 builder.Services.AddSwaggerGen(c =>
 {
@@ -54,9 +60,18 @@ if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException("Database connection string 'DefaultConnection' not found.");
 }
 
-// Register ApplicationDbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+// Register ApplicationDbContext with logging
+builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+{
+    options.UseSqlServer(connectionString);
+    
+    // Get ILoggerFactory from the service provider
+    var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+    var logger = loggerFactory.CreateLogger<ApplicationDbContext>();
+    
+    // Configure the context to use the logger
+    options.UseLoggerFactory(loggerFactory);
+});
 
 // Add AutoMapper
 builder.Services.AddAutoMapper(typeof(Program).Assembly, typeof(MappingProfile).Assembly);
@@ -86,21 +101,50 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        // Delete the existing database
+        await context.Database.EnsureDeletedAsync();
+        
+        // Apply migrations to create a new database
         await context.Database.MigrateAsync();
         
-        // First seed departments
+        // Seed data
         await context.SeedDepartmentsAsync();
-        
-        // Then seed positions
         await context.SeedPositionsAsync();
-        
-        // Finally seed employees
         await context.SeedEmployeesAsync();
+        
+        // Log seeded data
+        var departments = await context.Departments.ToListAsync();
+        var positions = await context.Positions.ToListAsync();
+        
+        Console.WriteLine("\nSeeded Departments:");
+        foreach (var dept in departments)
+        {
+            Console.WriteLine($"- {dept.DepartmentName} (ID: {dept.DepartmentId})");
+        }
+        
+        Console.WriteLine("\nSeeded Positions:");
+        foreach (var pos in positions)
+        {
+            Console.WriteLine($"- {pos.PositionName} (ID: {pos.PositionId})");
+        }
+
+        var employees = await context.Employees.ToListAsync();
+        Console.WriteLine("\nSeeded Employees:");
+        foreach (var emp in employees)
+        {
+            Console.WriteLine($"- {emp.EmployeeName} (Number: {emp.EmployeeNumber})");
+        }
     }
 }
 catch (Exception ex)
 {
     Console.WriteLine($"An error occurred while initializing the database: {ex.Message}");
+    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+    if (ex.InnerException != null)
+    {
+        Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+    }
     throw;
 }
 

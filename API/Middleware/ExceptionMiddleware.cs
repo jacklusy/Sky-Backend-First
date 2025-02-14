@@ -42,26 +42,44 @@ namespace EmployeeManagement.API.Middleware
         private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             context.Response.ContentType = "application/json";
-            var response = new ErrorResponse 
-            { 
-                Message = exception.Message ?? "An unexpected error occurred",
-                StatusCode = exception switch
-                {
-                    NotFoundException => (int)HttpStatusCode.NotFound,
-                    ValidationException => (int)HttpStatusCode.BadRequest,
-                    BusinessException => (int)HttpStatusCode.UnprocessableEntity,
-                    _ => (int)HttpStatusCode.InternalServerError
+            
+            var response = exception switch
+            {
+                ValidationException validationEx => new ErrorResponse 
+                { 
+                    Message = "Validation error",
+                    StatusCode = (int)HttpStatusCode.BadRequest,
+                    Errors = validationEx.Errors.Select(e => e.ErrorMessage).ToList()
+                },
+                NotFoundException notFoundEx => new ErrorResponse 
+                { 
+                    Message = notFoundEx.Message,
+                    StatusCode = (int)HttpStatusCode.NotFound
+                },
+                BusinessException businessEx => new ErrorResponse 
+                { 
+                    Message = businessEx.Message,
+                    StatusCode = (int)HttpStatusCode.UnprocessableEntity
+                },
+                _ => new ErrorResponse 
+                { 
+                    Message = exception.Message ?? "An unexpected error occurred",
+                    StatusCode = (int)HttpStatusCode.InternalServerError
                 }
             };
 
             context.Response.StatusCode = response.StatusCode;
-            await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+            await context.Response.WriteAsync(JsonSerializer.Serialize(response, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            }));
         }
     }
 
     public class ErrorResponse
     {
-        public string Message { get; set; } = string.Empty;
+        public string Message { get; set; }
         public int StatusCode { get; set; }
+        public List<string> Errors { get; set; } = new List<string>();
     }
 }

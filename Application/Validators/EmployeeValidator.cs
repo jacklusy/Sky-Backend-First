@@ -9,27 +9,29 @@ namespace EmployeeManagement.Application.Validators
         public EmployeeValidator()
         {
             RuleFor(x => x.EmployeeNumber)
-                .NotEmpty()
-                .MaximumLength(6)
-                .Matches("^[A-Z0-9]+$")
-                .WithMessage("Employee number must be up to 6 alphanumeric characters");
+                .NotEmpty().WithMessage("Employee number is required")
+                .MaximumLength(6).WithMessage("Employee number cannot exceed 6 characters");
 
             RuleFor(x => x.EmployeeName)
-                .NotEmpty()
-                .MaximumLength(20)
-                .WithMessage("Employee name must not exceed 20 characters");
+                .NotEmpty().WithMessage("Employee name is required")
+                .MaximumLength(100).WithMessage("Employee name cannot exceed 100 characters");
 
             RuleFor(x => x.Gender)
-                .NotEmpty()
-                .Must(x => x == "M" || x == "F")
-                .WithMessage("Gender must be either 'M' or 'F'");
+                .NotEmpty().WithMessage("Gender is required")
+                .Must(gender => gender.Length >= 1).WithMessage("Gender must be provided");
+
+            RuleFor(x => x.DepartmentName)
+                .NotEmpty().WithMessage("Department name is required");
+
+            RuleFor(x => x.PositionName)
+                .NotEmpty().WithMessage("Position name is required");
 
             RuleFor(x => x.VacationDaysLeft)
                 .InclusiveBetween(0, 24)
                 .WithMessage("Vacation days must be between 0 and 24");
 
             RuleFor(x => x.Salary)
-                .GreaterThan(0)
+                .GreaterThan(0).WithMessage("Salary must be greater than 0")
                 .PrecisionScale(18, 2, true)
                 .WithMessage("Salary must be positive with maximum 2 decimal places");
         }

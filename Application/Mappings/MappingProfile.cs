@@ -10,24 +10,21 @@ namespace EmployeeManagement.Application.Mappings
     public class MappingProfile : Profile
     {
         public MappingProfile()
-        {
+        { 
             CreateMap<Employee, EmployeeDto>()
-                .ForMember(dest => dest.DepartmentName,
-                    opt => opt.MapFrom(src => src.Department.DepartmentName))
-                .ForMember(dest => dest.PositionName,
-                    opt => opt.MapFrom(src => src.Position.PositionName))
-                .ForMember(dest => dest.ReportedToEmployeeName,
-                    opt => opt.MapFrom(src => src.ReportedToEmployee.EmployeeName))
-                .ForMember(dest => dest.Gender,
-                    opt => opt.MapFrom(src => src.GenderCode == "M" ? "Male" : "Female"));
+                .ForMember(dest => dest.DepartmentName, opt => opt.MapFrom(src => src.Department != null ? src.Department.DepartmentName : null))
+                .ForMember(dest => dest.PositionName, opt => opt.MapFrom(src => src.Position != null ? src.Position.PositionName : null))
+                .ForMember(dest => dest.ReportedToEmployeeName, opt => opt.MapFrom(src => src.ReportedToEmployee != null ? src.ReportedToEmployee.EmployeeName : null))
+                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.GenderCode));
 
             CreateMap<EmployeeDto, Employee>()
-                .ForMember(dest => dest.GenderCode,
-                    opt => opt.MapFrom(src => src.Gender.StartsWith("M", StringComparison.OrdinalIgnoreCase) ? "M" : "F"))
+                .ForMember(dest => dest.GenderCode, opt => opt.MapFrom(src => src.Gender.Substring(0, 1)))
                 .ForMember(dest => dest.DepartmentId,
                     opt => opt.Ignore())
                 .ForMember(dest => dest.PositionId,
-                    opt => opt.Ignore());
+                    opt => opt.Ignore())
+                .ReverseMap()
+                .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => src.GenderCode));
 
             CreateMap<VacationRequest, VacationRequestDto>()
                 .ForMember(dest => dest.EmployeeName,
@@ -42,8 +39,6 @@ namespace EmployeeManagement.Application.Mappings
                     opt => opt.MapFrom(src => CalculateVacationDuration(src.StartDate, src.EndDate)));
 
             // Add reverse mapping if needed
-            CreateMap<EmployeeDto, Employee>().ReverseMap();
-            CreateMap<VacationRequestDto, VacationRequest>().ReverseMap();
             CreateMap<Department, DepartmentDto>().ReverseMap();
         }
 
