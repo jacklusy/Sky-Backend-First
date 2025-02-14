@@ -17,15 +17,21 @@ namespace EmployeeManagement.Application.Services
         private readonly IEmployeeRepository _employeeRepository;
         private readonly IMapper _mapper;
         private readonly IValidator<EmployeeDto> _validator;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly IPositionRepository _positionRepository;
 
         public EmployeeService(
             IEmployeeRepository employeeRepository,
             IMapper mapper,
-            IValidator<EmployeeDto> validator)
+            IValidator<EmployeeDto> validator,
+            IDepartmentRepository departmentRepository,
+            IPositionRepository positionRepository)
         {
             _employeeRepository = employeeRepository;
             _mapper = mapper;
             _validator = validator;
+            _departmentRepository = departmentRepository;
+            _positionRepository = positionRepository;
         }
 
         public async Task<EmployeeDto> GetEmployeeDetailsAsync(string employeeNumber)
@@ -49,7 +55,19 @@ namespace EmployeeManagement.Application.Services
             if (!validationResult.IsValid)
                 throw new ValidationException(validationResult.Errors);
 
+            // Get Department and Position IDs
+            var department = await _departmentRepository.GetByNameAsync(employeeDto.DepartmentName);
+            var position = await _positionRepository.GetByNameAsync(employeeDto.PositionName);
+
+            if (department == null)
+                throw new NotFoundException($"Department '{employeeDto.DepartmentName}' not found.");
+            if (position == null)
+                throw new NotFoundException($"Position '{employeeDto.PositionName}' not found.");
+
             var employee = _mapper.Map<Employee>(employeeDto);
+            employee.DepartmentId = department.DepartmentId;
+            employee.PositionId = position.PositionId;
+
             await _employeeRepository.AddAsync(employee);
             return _mapper.Map<EmployeeDto>(employee);
         }

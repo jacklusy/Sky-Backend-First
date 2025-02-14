@@ -25,5 +25,10 @@ namespace EmployeeManagement.Domain.Interfaces.Repositories
         /// Deletes a department after checking for employees
         /// </summary>
         Task DeleteDepartmentAsync(Department department);
+
+        /// <summary>
+        /// Gets a department by name
+        /// </summary>
+        Task<Department> GetByNameAsync(string departmentName);
     }
 }

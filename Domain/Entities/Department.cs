@@ -6,7 +6,7 @@ public class Department
 
     [Required]
     [MaxLength(50)]
-    public string? DepartmentName { get; set; }
+    public string DepartmentName { get; set; }
 
-    public virtual ICollection<Employee>? Employees { get; set; }
+    public virtual ICollection<Employee> Employees { get; set; } = new List<Employee>();
 }

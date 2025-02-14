@@ -2,6 +2,8 @@ using AutoMapper;
 using EmployeeManagement.Domain.Entities;
 using EmployeeManagement.Application.DTOs;
 using System;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace EmployeeManagement.Application.Mappings
 {
@@ -18,6 +20,14 @@ namespace EmployeeManagement.Application.Mappings
                     opt => opt.MapFrom(src => src.ReportedToEmployee.EmployeeName))
                 .ForMember(dest => dest.Gender,
                     opt => opt.MapFrom(src => src.GenderCode == "M" ? "Male" : "Female"));
+
+            CreateMap<EmployeeDto, Employee>()
+                .ForMember(dest => dest.GenderCode,
+                    opt => opt.MapFrom(src => src.Gender.StartsWith("M", StringComparison.OrdinalIgnoreCase) ? "M" : "F"))
+                .ForMember(dest => dest.DepartmentId,
+                    opt => opt.Ignore())
+                .ForMember(dest => dest.PositionId,
+                    opt => opt.Ignore());
 
             CreateMap<VacationRequest, VacationRequestDto>()
                 .ForMember(dest => dest.EmployeeName,

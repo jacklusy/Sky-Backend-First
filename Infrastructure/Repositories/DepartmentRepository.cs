@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using EmployeeManagement.Domain.Entities;
 using EmployeeManagement.Domain.Exceptions;
 using EmployeeManagement.Domain.Interfaces.Repositories;
+using EmployeeManagement.Infrastructure.Persistence;
 
 namespace EmployeeManagement.Infrastructure.Repositories
 {
@@ -51,6 +52,12 @@ namespace EmployeeManagement.Infrastructure.Repositories
 
             _context.Departments.Remove(department);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<Department> GetByNameAsync(string departmentName)
+        {
+            return await _context.Departments
+                .FirstOrDefaultAsync(d => d.DepartmentName == departmentName);
         }
     }
 }

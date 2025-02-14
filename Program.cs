@@ -65,6 +65,7 @@ builder.Services.AddAutoMapper(typeof(Program).Assembly, typeof(MappingProfile).
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<IVacationRequestRepository, VacationRequestRepository>();
+builder.Services.AddScoped<IPositionRepository, PositionRepository>();
 
 // Register Services
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
@@ -75,6 +76,7 @@ builder.Services.AddScoped<IVacationService, VacationService>();
 builder.Services.AddScoped<IValidator<EmployeeDto>, EmployeeValidator>();
 builder.Services.AddScoped<IValidator<DepartmentDto>, DepartmentValidator>();
 builder.Services.AddScoped<IValidator<VacationRequestDto>, VacationRequestValidator>();
+builder.Services.AddScoped<IValidator<PositionDto>, PositionValidator>();
 
 var app = builder.Build();
 
@@ -85,6 +87,15 @@ try
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         await context.Database.MigrateAsync();
+        
+        // First seed departments
+        await context.SeedDepartmentsAsync();
+        
+        // Then seed positions
+        await context.SeedPositionsAsync();
+        
+        // Finally seed employees
+        await context.SeedEmployeesAsync();
     }
 }
 catch (Exception ex)
