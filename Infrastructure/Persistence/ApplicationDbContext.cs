@@ -35,6 +35,47 @@ namespace EmployeeManagement.Infrastructure.Persistence
 
             // Apply configurations
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
+
+            // Configure Employee-VacationRequest relationship
+            modelBuilder.Entity<VacationRequest>()
+                .HasOne(v => v.Employee)
+                .WithMany(e => e.VacationRequests)
+                .HasForeignKey(v => v.EmployeeNumber)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Configure Employee self-referencing relationships
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.ReportedToEmployee)
+                .WithMany(e => e.Subordinates)
+                .HasForeignKey(e => e.ReportedToEmployeeNumber)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Configure Employee-Department relationship
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.Department)
+                .WithMany(d => d.Employees)
+                .HasForeignKey(e => e.DepartmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Configure Employee-Position relationship
+            modelBuilder.Entity<Employee>()
+                .HasOne(e => e.Position)
+                .WithMany(p => p.Employees)
+                .HasForeignKey(e => e.PositionId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Configure VacationRequest relationships with Employee approvers
+            modelBuilder.Entity<VacationRequest>()
+                .HasOne(v => v.ApprovedByEmployee)
+                .WithMany()
+                .HasForeignKey(v => v.ApprovedByEmployeeNumber)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<VacationRequest>()
+                .HasOne(v => v.DeclinedByEmployee)
+                .WithMany()
+                .HasForeignKey(v => v.DeclinedByEmployeeNumber)
+                .OnDelete(DeleteBehavior.Restrict);
         }
 
         public async Task SeedDepartmentsAsync()

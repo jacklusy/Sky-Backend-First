@@ -15,10 +15,21 @@ namespace EmployeeManagement.Infrastructure.Repositories
         {
         }
 
+        public override async Task<Department> GetByIdAsync(object id)
+        {
+            var departmentId = Convert.ToInt32(id);
+            return await _dbSet
+                .Include(d => d.Employees)
+                .FirstOrDefaultAsync(d => d.DepartmentId == departmentId);
+        }
+
         public async Task<Department> GetDepartmentWithEmployeesAsync(int departmentId)
         {
-            return await _context.Departments
+            return await _dbSet
                 .Include(d => d.Employees)
+                    .ThenInclude(e => e.Position)
+                .Include(d => d.Employees)
+                    .ThenInclude(e => e.ReportedToEmployee)
                 .FirstOrDefaultAsync(d => d.DepartmentId == departmentId);
         }
 

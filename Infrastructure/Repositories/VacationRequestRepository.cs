@@ -94,5 +94,12 @@ namespace EmployeeManagement.Infrastructure.Repositories
                 ["DaysOff"] = requests.Count(r => r.VacationTypeCode == "O")
             };
         }
+
+        public async Task<bool> HasActiveRequestsAsync(string employeeNumber)
+        {
+            return await _context.VacationRequests
+                .AnyAsync(vr => vr.EmployeeNumber == employeeNumber && 
+                               vr.RequestStateId == (int)RequestStateEnum.Submitted);
+        }
     }
 }

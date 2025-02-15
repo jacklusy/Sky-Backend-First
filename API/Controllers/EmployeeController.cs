@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+using EmployeeManagement.Application.DTOs;
+using EmployeeManagement.Domain.Interfaces.Services;
 
 namespace EmployeeManagement.API.Controllers
 {
@@ -44,13 +47,9 @@ namespace EmployeeManagement.API.Controllers
         }
 
         [HttpPut("{employeeNumber}")]
-        public async Task<IActionResult> UpdateEmployee(string employeeNumber, EmployeeDto employeeDto)
+        [Consumes("application/json")]
+        public async Task<ActionResult> UpdateEmployee(string employeeNumber, [FromBody] EmployeeDto employeeDto)
         {
-            if (employeeNumber != employeeDto.EmployeeNumber)
-            {
-                return BadRequest();
-            }
-
             await _employeeService.UpdateEmployeeAsync(employeeNumber, employeeDto);
             return NoContent();
         }
@@ -60,6 +59,13 @@ namespace EmployeeManagement.API.Controllers
         {
             var employees = await _employeeService.GetEmployeesWithPendingRequestsAsync();
             return Ok(employees);
+        }
+
+        [HttpDelete("{employeeNumber}")]
+        public async Task<ActionResult> DeleteEmployee(string employeeNumber)
+        {
+            await _employeeService.DeleteEmployeeAsync(employeeNumber);
+            return NoContent();
         }
     }
 }

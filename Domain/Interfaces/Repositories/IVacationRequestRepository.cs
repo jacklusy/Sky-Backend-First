@@ -49,5 +49,7 @@ namespace EmployeeManagement.Domain.Interfaces.Repositories
         /// <param name="year">The year to get statistics for</param>
         /// <returns>Dictionary containing various statistics about vacation requests</returns>
         Task<Dictionary<string, int>> GetVacationStatisticsAsync(int year);
+
+        Task<bool> HasActiveRequestsAsync(string employeeNumber);
     }
 }

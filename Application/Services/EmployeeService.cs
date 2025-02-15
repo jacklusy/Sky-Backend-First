@@ -23,6 +23,7 @@ namespace EmployeeManagement.Application.Services
         private readonly IDepartmentRepository _departmentRepository;
         private readonly IPositionRepository _positionRepository;
         private readonly ILogger<EmployeeService> _logger;
+        private readonly IVacationRequestRepository _vacationRequestRepository;
 
         public EmployeeService(
             IEmployeeRepository employeeRepository,
@@ -30,7 +31,8 @@ namespace EmployeeManagement.Application.Services
             IValidator<EmployeeDto> validator,
             IDepartmentRepository departmentRepository,
             IPositionRepository positionRepository,
-            ILogger<EmployeeService> logger)
+            ILogger<EmployeeService> logger,
+            IVacationRequestRepository vacationRequestRepository)
         {
             _employeeRepository = employeeRepository;
             _mapper = mapper;
@@ -38,6 +40,7 @@ namespace EmployeeManagement.Application.Services
             _departmentRepository = departmentRepository;
             _positionRepository = positionRepository;
             _logger = logger;
+            _vacationRequestRepository = vacationRequestRepository;
         }
 
         public async Task<EmployeeDto> GetEmployeeDetailsAsync(string employeeNumber)
@@ -176,6 +179,29 @@ namespace EmployeeManagement.Application.Services
         {
             var employees = await _employeeRepository.GetEmployeesWithPendingRequestsAsync();
             return _mapper.Map<IEnumerable<EmployeeDto>>(employees);
+        }
+
+        public async Task DeleteEmployeeAsync(string employeeNumber)
+        {
+            var employee = await _employeeRepository.GetByIdAsync(employeeNumber);
+            if (employee == null)
+                throw new NotFoundException($"Employee with number {employeeNumber} not found.");
+
+            // Check if employee has any active vacation requests
+            var hasActiveRequests = await _vacationRequestRepository.HasActiveRequestsAsync(employeeNumber);
+            if (hasActiveRequests)
+                throw new BusinessException("Cannot delete employee with active vacation requests.");
+
+            try
+            {
+                await _employeeRepository.DeleteAsync(employee);
+                _logger.LogInformation("Employee {EmployeeNumber} deleted successfully", employeeNumber);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting employee {EmployeeNumber}", employeeNumber);
+                throw new BusinessException("Error occurred while deleting the employee", ex);
+            }
         }
     }
 }

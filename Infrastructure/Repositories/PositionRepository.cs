@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using EmployeeManagement.Domain.Entities;
@@ -10,6 +11,14 @@ namespace EmployeeManagement.Infrastructure.Repositories
     {
         public PositionRepository(ApplicationDbContext context) : base(context)
         {
+        }
+
+        public override async Task<Position> GetByIdAsync(object id)
+        {
+            var positionId = Convert.ToInt32(id);
+            return await _dbSet
+                .Include(p => p.Employees)
+                .FirstOrDefaultAsync(p => p.PositionId == positionId);
         }
 
         public async Task<Position> GetByNameAsync(string positionName)

@@ -5,4 +5,5 @@ public interface IEmployeeService
     Task<EmployeeDto> CreateEmployeeAsync(EmployeeDto employeeDto);
     Task UpdateEmployeeAsync(string employeeNumber, EmployeeDto employeeDto);
     Task<IEnumerable<EmployeeDto>> GetEmployeesWithPendingRequestsAsync();
+    Task DeleteEmployeeAsync(string employeeNumber);
 }
