@@ -34,6 +34,8 @@ namespace EmployeeManagement.Application.Validators
             RuleFor(x => x.TotalVacationDays)
                 .GreaterThan(0)
                 .WithMessage("Total vacation days must be greater than 0");
+
+            // Comments is optional, so no validation rule needed
         }
     }
 }

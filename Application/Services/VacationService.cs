@@ -38,6 +38,11 @@ namespace EmployeeManagement.Application.Services
             if (!validationResult.IsValid)
                 throw new ValidationException(validationResult.Errors);
 
+            // Check if employee exists
+            var employee = await _employeeRepository.GetByIdAsync(requestDto.EmployeeNumber);
+            if (employee == null)
+                throw new NotFoundException($"Employee with number {requestDto.EmployeeNumber} not found.");
+
             var hasOverlap = await _employeeRepository.HasOverlappingVacationsAsync(
                 requestDto.EmployeeNumber,
                 requestDto.StartDate,

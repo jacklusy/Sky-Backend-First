@@ -38,6 +38,18 @@ namespace EmployeeManagement.Application.Mappings
                 .ForMember(dest => dest.VacationDuration,
                     opt => opt.MapFrom(src => CalculateVacationDuration(src.StartDate, src.EndDate)));
 
+            // Add the reverse mapping
+            CreateMap<VacationRequestDto, VacationRequest>()
+                .ForMember(dest => dest.VacationTypeCode, 
+                    opt => opt.MapFrom(src => src.VacationType))
+                .ForMember(dest => dest.Employee, opt => opt.Ignore())
+                .ForMember(dest => dest.VacationType, opt => opt.Ignore())
+                .ForMember(dest => dest.RequestState, opt => opt.Ignore())
+                .ForMember(dest => dest.ApprovedByEmployee, opt => opt.Ignore())
+                .ForMember(dest => dest.DeclinedByEmployee, opt => opt.Ignore())
+                .ForMember(dest => dest.ApprovedByEmployeeNumber, opt => opt.Ignore())
+                .ForMember(dest => dest.DeclinedByEmployeeNumber, opt => opt.Ignore());
+
             // Add reverse mapping if needed
             CreateMap<Department, DepartmentDto>().ReverseMap();
         }
